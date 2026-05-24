@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}首页 - 宿舍报修管理系统{% endblock %}
+
+{% block content %}
+<div class="hero">
+    <h1 class="hero-title">宿舍报修管理系统</h1>
+    <p class="hero-subtitle">便捷报修，高效维修，让宿舍生活更美好</p>
+    <div class="hero-buttons">
+        {% if user.is_authenticated %}
+            {% if user.role == 'student' %}
+                <a href="#" class="btn btn-primary">提交报修</a>
+            {% elif user.role == 'worker' %}
+                <a href="#" class="btn btn-primary">进入工作台</a>
+            {% elif user.role == 'admin' %}
+                <a href="#" class="btn btn-primary">派单管理</a>
+            {% endif %}
+        {% else %}
+            <a href="{% url 'login' %}" class="btn btn-primary">立即登录</a>
+            <a href="{% url 'register' %}" class="btn btn-outline">注册账号</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="stats">
+    <div class="stat-card">
+        <div class="stat-number">0</div>
+        <div class="stat-label">待处理报修</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">0</div>
+        <div class="stat-label">维修中</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">0</div>
+        <div class="stat-label">已完成</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">0</div>
+        <div class="stat-label">用户好评率</div>
+    </div>
+</div>
+
+<div class="features">
+    <div class="feature-card">
+        <div class="feature-icon">📝</div>
+        <h3 class="feature-title">在线报修</h3>
+        <p class="feature-desc">学生可随时提交报修申请，上传问题图片，实时跟踪维修进度</p>
+    </div>
+    <div class="feature-card">
+        <div class="feature-icon">🔧</div>
+        <h3 class="feature-title">高效派单</h3>
+        <p class="feature-desc">管理员智能派单，维修工快速接单，提高维修效率</p>
+    </div>
+    <div class="feature-card">
+        <div class="feature-icon">⭐</div>
+        <h3 class="feature-title">服务评价</h3>
+        <p class="feature-desc">维修完成后可进行评价，促进服务质量提升</p>
+    </div>
+    <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <h3 class="feature-title">数据统计</h3>
+        <p class="feature-desc">全面的统计数据，帮助管理者了解维修情况</p>
+    </div>
+</div>
+{% endblock %}
