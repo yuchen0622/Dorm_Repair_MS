@@ -61,6 +61,64 @@ class WorkOrder(models.Model):
     def __str__(self):
         return f'工单 #{self.id} - {self.get_status_display()}'
 
+    def can_accept(self):
+        return self.status == 'assigned'
+
+    def can_start(self):
+        return self.status == 'accepted'
+
+    def can_complete(self):
+        return self.status == 'in_progress'
+
+    def can_reject(self):
+        return self.status in ['assigned', 'accepted']
+
+    def accept(self, operator=None):
+        from django.utils import timezone
+        if not self.can_accept():
+            raise ValueError('当前状态不允许接单')
+        self.status = 'accepted'
+        self.accepted_at = timezone.now()
+        self.save()
+        self._create_log('accept', '维修工接单', operator)
+
+    def start_work(self, operator=None):
+        from django.utils import timezone
+        if not self.can_start():
+            raise ValueError('当前状态不允许开始维修')
+        self.status = 'in_progress'
+        self.started_at = timezone.now()
+        self.save()
+        self._create_log('start', '开始维修', operator)
+
+    def complete(self, remark='', operator=None):
+        from django.utils import timezone
+        if not self.can_complete():
+            raise ValueError('当前状态不允许完成')
+        self.status = 'completed'
+        self.completed_at = timezone.now()
+        if remark:
+            self.remark = remark
+        self.save()
+        self._create_log('complete', f'完成维修: {remark}', operator)
+        self.repair_request.status = 'completed'
+        self.repair_request.save()
+
+    def reject(self, reason='', operator=None):
+        if not self.can_reject():
+            raise ValueError('当前状态不允许拒绝')
+        self.status = 'rejected'
+        self.save()
+        self._create_log('reject', f'拒绝工单: {reason}', operator)
+
+    def _create_log(self, action, description, operator):
+        WorkOrderLog.objects.create(
+            work_order=self,
+            operator=operator,
+            action=action,
+            description=description
+        )
+
 
 class WorkOrderLog(models.Model):
     """

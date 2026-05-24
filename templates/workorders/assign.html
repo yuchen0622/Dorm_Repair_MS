@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+
+{% block title %}派单 - 宿舍报修管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>派单管理</h2>
+    <p class="text-muted">为报修单分配维修工</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>报修单信息</h3>
+    </div>
+    <div class="card-body">
+        <div class="repair-info">
+            <p><strong>报修标题：</strong>{{ repair.title }}</p>
+            <p><strong>报修类型：</strong>{{ repair.get_repair_type_display }}</p>
+            <p><strong>问题描述：</strong>{{ repair.description }}</p>
+            <p><strong>宿舍位置：</strong>{{ repair.dorm_building }} {{ repair.dorm_room }}</p>
+            <p><strong>联系电话：</strong>{{ repair.contact_phone }}</p>
+            <p><strong>提交时间：</strong>{{ repair.created_at|date:"Y-m-d H:i" }}</p>
+            <p><strong>提交人：</strong>{{ repair.student.username }}</p>
+        </div>
+        
+        {% if repair.images.all %}
+        <div class="repair-images-section">
+            <h4>问题图片</h4>
+            <div class="repair-images">
+                {% for img in repair.images.all %}
+                <img src="{{ img.image.url }}" class="repair-img" onclick="window.open('{{ img.image.url }}')">
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>选择维修工</h3>
+    </div>
+    <div class="card-body">
+        {% if workers %}
+        <form id="assignForm">
+            {% csrf_token %}
+            <div class="worker-list">
+                {% for worker in workers %}
+                <div class="worker-item" onclick="selectWorker('{{ worker.id }}')">
+                    <input type="radio" name="worker_id" value="{{ worker.id }}" id="worker_{{ worker.id }}" class="worker-radio">
+                    <label for="worker_{{ worker.id }}" class="worker-label">
+                        <div class="worker-info">
+                            <span class="worker-name">{{ worker.username }}</span>
+                            <span class="worker-phone">{{ worker.phone|default:"未填写电话" }}</span>
+                        </div>
+                    </label>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">派单备注（可选）</label>
+                <textarea name="remark" class="form-textarea" rows="3" placeholder="填写派单备注信息..."></textarea>
+            </div>
+            
+            <div class="form-actions">
+                <button type="button" class="btn btn-primary btn-lg" onclick="submitAssign()">确认派单</button>
+                <a href="{% url 'repairs:repair_manage' %}" class="btn btn-secondary btn-lg">取消</a>
+            </div>
+        </form>
+        {% else %}
+        <div class="empty-message">
+            <p>暂无可用维修工，请先添加维修工用户</p>
+            <a href="{% url 'users:user_manage' %}" class="btn btn-primary">去添加</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const repairId = '{{ repair.id }}';
+
+function selectWorker(id) {
+    document.getElementById('worker_' + id).checked = true;
+    document.querySelectorAll('.worker-item').forEach(item => {
+        item.classList.remove('selected');
+    });
+    event.currentTarget.classList.add('selected');
+}
+
+function submitAssign() {
+    const selectedWorker = document.querySelector('input[name="worker_id"]:checked');
+    if (!selectedWorker) {
+        alert('请选择维修工');
+        return;
+    }
+    
+    const remark = document.querySelector('textarea[name="remark"]').value;
+    
+    if (confirm('确认派单？')) {
+        fetch('/workorders/api/assign/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                repair_id: repairId,
+                worker_id: parseInt(selectedWorker.value),
+                remark: remark
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert('派单成功！已分配给: ' + data.data.worker_name);
+                window.location.href = '{% url "repairs:repair_manage" %}';
+            } else {
+                alert('派单失败：' + data.message);
+            }
+        });
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}
