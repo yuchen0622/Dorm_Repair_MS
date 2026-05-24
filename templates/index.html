@@ -9,11 +9,11 @@
     <div class="hero-buttons">
         {% if user.is_authenticated %}
             {% if user.role == 'student' %}
-                <a href="#" class="btn btn-primary">提交报修</a>
+                <a href="{% url 'repairs:repair_create' %}" class="btn btn-primary">提交报修</a>
             {% elif user.role == 'worker' %}
-                <a href="#" class="btn btn-primary">进入工作台</a>
+                <a href="{% url 'workorders:worker_dashboard' %}" class="btn btn-primary">进入工作台</a>
             {% elif user.role == 'admin' %}
-                <a href="#" class="btn btn-primary">派单管理</a>
+                <a href="{% url 'repairs:repair_manage' %}" class="btn btn-primary">报修管理</a>
             {% endif %}
         {% else %}
             <a href="{% url 'users:login' %}" class="btn btn-primary">立即登录</a>
@@ -22,6 +22,118 @@
     </div>
 </div>
 
+{% if user.is_authenticated %}
+    {% if user.role == 'admin' %}
+    <div class="dashboard-section">
+        <h2>数据概览</h2>
+        <div class="stats-grid">
+            <div class="stats-card">
+                <h3>报修单</h3>
+                <div class="stats-number">{{ total_repairs|default:0 }}</div>
+                <div class="stats-label">总计</div>
+            </div>
+            <div class="stats-card">
+                <h3>待处理</h3>
+                <div class="stats-number">{{ pending_repairs|default:0 }}</div>
+                <div class="stats-label">报修单</div>
+            </div>
+            <div class="stats-card">
+                <h3>维修中</h3>
+                <div class="stats-number">{{ in_progress_workorders|default:0 }}</div>
+                <div class="stats-label">工单</div>
+            </div>
+            <div class="stats-card">
+                <h3>已完成</h3>
+                <div class="stats-number">{{ completed_repairs|default:0 }}</div>
+                <div class="stats-label">报修单</div>
+            </div>
+        </div>
+        <div class="stats-grid">
+            <div class="stats-card">
+                <h3>工单总数</h3>
+                <div class="stats-number">{{ total_workorders|default:0 }}</div>
+                <div class="stats-label">工单</div>
+            </div>
+            <div class="stats-card">
+                <h3>评价数</h3>
+                <div class="stats-number">{{ total_reviews|default:0 }}</div>
+                <div class="stats-label">条评价</div>
+            </div>
+            <div class="stats-card">
+                <h3>平均评分</h3>
+                <div class="stats-number">{{ avg_rating|default:0 }}</div>
+                <div class="stats-label">分</div>
+            </div>
+            <div class="stats-card">
+                <h3>用户数</h3>
+                <div class="stats-number">{{ total_users|default:0 }}</div>
+                <div class="stats-label">人</div>
+            </div>
+        </div>
+    </div>
+    
+    {% elif user.role == 'worker' %}
+    <div class="dashboard-section">
+        <h2>我的工作台</h2>
+        <div class="stats-grid">
+            <div class="stats-card">
+                <h3>待接单</h3>
+                <div class="stats-number">{{ my_assigned|default:0 }}</div>
+                <div class="stats-label">工单</div>
+            </div>
+            <div class="stats-card">
+                <h3>已接单</h3>
+                <div class="stats-number">{{ my_accepted|default:0 }}</div>
+                <div class="stats-label">工单</div>
+            </div>
+            <div class="stats-card">
+                <h3>维修中</h3>
+                <div class="stats-number">{{ my_in_progress|default:0 }}</div>
+                <div class="stats-label">工单</div>
+            </div>
+            <div class="stats-card">
+                <h3>已完成</h3>
+                <div class="stats-number">{{ my_completed|default:0 }}</div>
+                <div class="stats-label">工单</div>
+            </div>
+        </div>
+        <div class="stats-grid">
+            <div class="stats-card">
+                <h3>收到评价</h3>
+                <div class="stats-number">{{ my_review_count|default:0 }}</div>
+                <div class="stats-label">条</div>
+            </div>
+            <div class="stats-card">
+                <h3>平均评分</h3>
+                <div class="stats-number">{{ my_avg_rating|default:0 }}</div>
+                <div class="stats-label">分</div>
+            </div>
+        </div>
+    </div>
+    
+    {% elif user.role == 'student' %}
+    <div class="dashboard-section">
+        <h2>我的报修</h2>
+        <div class="stats-grid">
+            <div class="stats-card">
+                <h3>待处理</h3>
+                <div class="stats-number">{{ my_pending|default:0 }}</div>
+                <div class="stats-label">报修单</div>
+            </div>
+            <div class="stats-card">
+                <h3>处理中</h3>
+                <div class="stats-number">{{ my_processing|default:0 }}</div>
+                <div class="stats-label">报修单</div>
+            </div>
+            <div class="stats-card">
+                <h3>已完成</h3>
+                <div class="stats-number">{{ my_completed|default:0 }}</div>
+                <div class="stats-label">报修单</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+{% else %}
 <div class="stats">
     <div class="stat-card">
         <div class="stat-number">0</div>
@@ -40,6 +152,7 @@
         <div class="stat-label">用户好评率</div>
     </div>
 </div>
+{% endif %}
 
 <div class="features">
     <div class="feature-card">

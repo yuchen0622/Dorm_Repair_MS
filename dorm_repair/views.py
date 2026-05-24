@@ -8,7 +8,51 @@ from users.models import User
 
 def index(request):
     """首页视图"""
-    return render(request, 'index.html')
+    context = {}
+    
+    if request.user.is_authenticated:
+        from repairs.models import RepairRequest
+        from workorders.models import WorkOrder
+        from reviews.models import Review
+        from django.db.models import Avg
+        
+        if request.user.is_admin():
+            context['total_repairs'] = RepairRequest.objects.count()
+            context['pending_repairs'] = RepairRequest.objects.filter(status='pending').count()
+            context['processing_repairs'] = RepairRequest.objects.filter(status='processing').count()
+            context['completed_repairs'] = RepairRequest.objects.filter(status='completed').count()
+            
+            context['total_workorders'] = WorkOrder.objects.count()
+            context['assigned_workorders'] = WorkOrder.objects.filter(status='assigned').count()
+            context['in_progress_workorders'] = WorkOrder.objects.filter(status='in_progress').count()
+            
+            context['total_reviews'] = Review.objects.count()
+            avg_rating = Review.objects.aggregate(avg=Avg('rating'))['avg']
+            context['avg_rating'] = round(avg_rating, 2) if avg_rating else 0
+            
+            context['total_users'] = User.objects.count()
+            context['student_count'] = User.objects.filter(role='student').count()
+            context['worker_count'] = User.objects.filter(role='worker').count()
+            
+        elif request.user.is_worker():
+            my_workorders = WorkOrder.objects.filter(worker=request.user)
+            context['my_assigned'] = my_workorders.filter(status='assigned').count()
+            context['my_accepted'] = my_workorders.filter(status='accepted').count()
+            context['my_in_progress'] = my_workorders.filter(status='in_progress').count()
+            context['my_completed'] = my_workorders.filter(status='completed').count()
+            
+            my_reviews = Review.objects.filter(work_order__worker=request.user)
+            context['my_review_count'] = my_reviews.count()
+            my_avg = my_reviews.aggregate(avg=Avg('rating'))['avg']
+            context['my_avg_rating'] = round(my_avg, 2) if my_avg else 0
+            
+        elif request.user.is_student():
+            my_repairs = RepairRequest.objects.filter(student=request.user)
+            context['my_pending'] = my_repairs.filter(status='pending').count()
+            context['my_processing'] = my_repairs.filter(status='processing').count()
+            context['my_completed'] = my_repairs.filter(status='completed').count()
+    
+    return render(request, 'index.html', context)
 
 
 def login_view(request):

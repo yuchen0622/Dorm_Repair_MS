@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block title %}评价维修服务 - 宿舍报修管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>评价维修服务</h2>
+    <p class="text-muted">对已完成的维修工单进行评价</p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h4>工单信息</h4>
+        <div class="work-order-info">
+            <p><strong>工单ID：</strong>{{ work_order.id }}</p>
+            <p><strong>报修标题：</strong>{{ work_order.repair_request.title }}</p>
+            <p><strong>维修工：</strong>{{ work_order.worker.username }}</p>
+            <p><strong>完成时间：</strong>{{ work_order.completed_at|date:"Y-m-d H:i" }}</p>
+        </div>
+        
+        <hr>
+        
+        <form id="reviewForm">
+            {% csrf_token %}
+            <input type="hidden" id="workOrderId" value="{{ work_order.id }}">
+            
+            <div class="form-group">
+                <label class="form-label">评分</label>
+                <div class="star-rating">
+                    <span class="star" data-rating="1">★</span>
+                    <span class="star" data-rating="2">★</span>
+                    <span class="star" data-rating="3">★</span>
+                    <span class="star" data-rating="4">★</span>
+                    <span class="star" data-rating="5">★</span>
+                </div>
+                <input type="hidden" id="rating" name="rating" value="0">
+                <p id="ratingText" class="rating-text">请选择评分</p>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">评价内容（选填）</label>
+                <textarea id="comment" name="comment" class="form-textarea" rows="4" placeholder="请输入您的评价内容..."></textarea>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">提交评价</button>
+                <a href="{% url 'repairs:my_repairs' %}" class="btn btn-secondary">返回</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const ratingTexts = ['', '很差', '较差', '一般', '较好', '很好'];
+let currentRating = 0;
+
+document.querySelectorAll('.star').forEach(star => {
+    star.addEventListener('click', function() {
+        currentRating = parseInt(this.dataset.rating);
+        document.getElementById('rating').value = currentRating;
+        document.getElementById('ratingText').textContent = ratingTexts[currentRating];
+        updateStars();
+    });
+    
+    star.addEventListener('mouseover', function() {
+        const rating = parseInt(this.dataset.rating);
+        highlightStars(rating);
+    });
+    
+    star.addEventListener('mouseout', function() {
+        updateStars();
+    });
+});
+
+function highlightStars(rating) {
+    document.querySelectorAll('.star').forEach((star, index) => {
+        if (index < rating) {
+            star.classList.add('active');
+        } else {
+            star.classList.remove('active');
+        }
+    });
+}
+
+function updateStars() {
+    highlightStars(currentRating);
+}
+
+document.getElementById('reviewForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const rating = document.getElementById('rating').value;
+    const comment = document.getElementById('comment').value;
+    const workOrderId = document.getElementById('workOrderId').value;
+    
+    if (rating == 0) {
+        alert('请选择评分');
+        return;
+    }
+    
+    fetch('/reviews/api/create/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            work_order_id: workOrderId,
+            rating: rating,
+            comment: comment
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert('评价成功');
+            window.location.href = '/repairs/my/';
+        } else {
+            alert('评价失败：' + data.message);
+        }
+    });
+});
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}
