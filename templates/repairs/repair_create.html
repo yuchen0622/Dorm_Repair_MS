@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}提交报修 - 宿舍报修管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>提交报修</h2>
+    <p class="text-muted">填写报修信息，我们会尽快处理</p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data" class="repair-form">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label class="form-label">报修标题 <span class="required">*</span></label>
+                <input type="text" name="title" class="form-input" placeholder="请简要描述问题" required>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">报修类型 <span class="required">*</span></label>
+                    <select name="repair_type" class="form-select" required>
+                        <option value="electric">水电</option>
+                        <option value="door">门窗</option>
+                        <option value="furniture">家具</option>
+                        <option value="network">网络</option>
+                        <option value="other">其他</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">联系电话 <span class="required">*</span></label>
+                    <input type="text" name="contact_phone" class="form-input" value="{{ user.phone }}" placeholder="请输入联系电话" required>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">宿舍楼 <span class="required">*</span></label>
+                    <input type="text" name="dorm_building" class="form-input" value="{{ user.dorm_building }}" placeholder="如：1号楼" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">房间号 <span class="required">*</span></label>
+                    <input type="text" name="dorm_room" class="form-input" value="{{ user.dorm_room }}" placeholder="如：301" required>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">问题描述 <span class="required">*</span></label>
+                <textarea name="description" class="form-textarea" rows="5" placeholder="请详细描述问题情况" required></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">上传图片（最多5张，每张不超过5MB）</label>
+                <input type="file" name="images" class="form-input" multiple accept="image/jpeg,image/png,image/gif">
+                <p class="form-hint">支持JPG、PNG、GIF格式</p>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-lg">提交报修</button>
+                <a href="{% url 'repairs:my_repairs' %}" class="btn btn-secondary btn-lg">取消</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
