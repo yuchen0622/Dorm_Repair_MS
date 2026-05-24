@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+
+{% block title %}用户管理 - 宿舍报修管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>用户管理</h2>
+    <p class="text-muted">管理系统中的所有用户</p>
+</div>
+
+<div class="stats-row">
+    <div class="stat-item">
+        <span class="stat-num">{{ total_users }}</span>
+        <span class="stat-text">总用户</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-num">{{ total_students }}</span>
+        <span class="stat-text">学生</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-num">{{ total_workers }}</span>
+        <span class="stat-text">维修工</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-num">{{ total_admins }}</span>
+        <span class="stat-text">管理员</span>
+    </div>
+</div>
+
+<div class="filter-bar">
+    <form method="get" class="filter-form">
+        <select name="role" class="form-select filter-select">
+            <option value="">全部角色</option>
+            <option value="student" {% if current_role == 'student' %}selected{% endif %}>学生</option>
+            <option value="worker" {% if current_role == 'worker' %}selected{% endif %}>维修工</option>
+            <option value="admin" {% if current_role == 'admin' %}selected{% endif %}>管理员</option>
+        </select>
+        <button type="submit" class="btn btn-primary">筛选</button>
+        <a href="{% url 'users:user_manage' %}" class="btn btn-secondary">重置</a>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>用户名</th>
+                    <th>邮箱</th>
+                    <th>角色</th>
+                    <th>联系电话</th>
+                    <th>状态</th>
+                    <th>注册时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in page_obj %}
+                <tr>
+                    <td>{{ item.id }}</td>
+                    <td>{{ item.username }}</td>
+                    <td>{{ item.email }}</td>
+                    <td><span class="badge badge-{{ item.role }}">{{ item.get_role_display }}</span></td>
+                    <td>{{ item.phone|default:"-" }}</td>
+                    <td>
+                        {% if item.is_active %}
+                        <span class="status-active">正常</span>
+                        {% else %}
+                        <span class="status-inactive">禁用</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ item.date_joined|date:"Y-m-d H:i" }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-info" onclick="viewUser('{{ item.id }}')">查看</button>
+                        <button class="btn btn-sm btn-warning" onclick="editUser('{{ item.id }}')">编辑</button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center">暂无用户数据</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if page_obj.has_other_pages %}
+<div class="pagination">
+    {% if page_obj.has_previous %}
+    <a href="?page=1{% if current_role %}&role={{ current_role }}{% endif %}" class="page-btn">首页</a>
+    <a href="?page={{ page_obj.previous_page_number }}{% if current_role %}&role={{ current_role }}{% endif %}" class="page-btn">上一页</a>
+    {% endif %}
+    
+    <span class="page-info">第 {{ page_obj.number }} 页 / 共 {{ page_obj.paginator.num_pages }} 页</span>
+    
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}{% if current_role %}&role={{ current_role }}{% endif %}" class="page-btn">下一页</a>
+    <a href="?page={{ page_obj.paginator.num_pages }}{% if current_role %}&role={{ current_role }}{% endif %}" class="page-btn">末页</a>
+    {% endif %}
+</div>
+{% endif %}
+
+<div id="userModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle">用户详情</h3>
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+        </div>
+        <div class="modal-body" id="modalBody">
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function viewUser(userId) {
+    fetch(`/users/api/users/${userId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const user = data.data;
+                document.getElementById('modalTitle').innerText = '用户详情';
+                document.getElementById('modalBody').innerHTML = `
+                    <div class="user-detail">
+                        <p><strong>用户名：</strong>${user.username}</p>
+                        <p><strong>邮箱：</strong>${user.email}</p>
+                        <p><strong>角色：</strong>${user.role_display}</p>
+                        <p><strong>电话：</strong>${user.phone || '未填写'}</p>
+                        <p><strong>宿舍楼：</strong>${user.dorm_building || '未填写'}</p>
+                        <p><strong>宿舍房间：</strong>${user.dorm_room || '未填写'}</p>
+                        <p><strong>维修专长：</strong>${user.specialty || '未填写'}</p>
+                        <p><strong>状态：</strong>${user.is_active ? '正常' : '禁用'}</p>
+                        <p><strong>注册时间：</strong>${user.date_joined}</p>
+                    </div>
+                `;
+                document.getElementById('userModal').style.display = 'block';
+            }
+        });
+}
+
+function editUser(userId) {
+    fetch(`/users/api/users/${userId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const user = data.data;
+                document.getElementById('modalTitle').innerText = '编辑用户';
+                document.getElementById('modalBody').innerHTML = `
+                    <form id="editForm">
+                        <div class="form-group">
+                            <label>用户名</label>
+                            <input type="text" class="form-input" value="${user.username}" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>联系电话</label>
+                            <input type="text" class="form-input" id="editPhone" value="${user.phone}">
+                        </div>
+                        <div class="form-group">
+                            <label>状态</label>
+                            <select class="form-select" id="editActive">
+                                <option value="true" ${user.is_active ? 'selected' : ''}>正常</option>
+                                <option value="false" ${!user.is_active ? 'selected' : ''}>禁用</option>
+                            </select>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-primary" onclick="saveUser(${userId})">保存</button>
+                            <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
+                        </div>
+                    </form>
+                `;
+                document.getElementById('userModal').style.display = 'block';
+            }
+        });
+}
+
+function saveUser(userId) {
+    const phone = document.getElementById('editPhone').value;
+    const isActive = document.getElementById('editActive').value === 'true';
+    
+    fetch(`/users/api/users/${userId}/update/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            phone: phone,
+            is_active: isActive
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('更新成功');
+            closeModal();
+            location.reload();
+        } else {
+            alert('更新失败：' + data.message);
+        }
+    });
+}
+
+function closeModal() {
+    document.getElementById('userModal').style.display = 'none';
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+window.onclick = function(event) {
+    const modal = document.getElementById('userModal');
+    if (event.target == modal) {
+        closeModal();
+    }
+}
+</script>
+{% endblock %}

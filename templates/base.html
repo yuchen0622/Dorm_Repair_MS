@@ -26,7 +26,7 @@
                         <a href="#" class="nav-link">我的工单</a>
                     {% elif user.role == 'admin' %}
                         <a href="#" class="nav-link">派单管理</a>
-                        <a href="#" class="nav-link">用户管理</a>
+                        <a href="{% url 'users:user_manage' %}" class="nav-link">用户管理</a>
                     {% endif %}
                     <a href="{% url 'users:profile' %}" class="nav-link">个人中心</a>
                     <a href="{% url 'users:logout' %}" class="nav-link nav-logout">退出登录</a>
