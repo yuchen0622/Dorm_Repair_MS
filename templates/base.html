@@ -25,6 +25,7 @@
                         <a href="#" class="nav-link">工作台</a>
                         <a href="#" class="nav-link">我的工单</a>
                     {% elif user.role == 'admin' %}
+                        <a href="{% url 'repairs:repair_manage' %}" class="nav-link">报修管理</a>
                         <a href="#" class="nav-link">派单管理</a>
                         <a href="{% url 'users:user_manage' %}" class="nav-link">用户管理</a>
                     {% endif %}

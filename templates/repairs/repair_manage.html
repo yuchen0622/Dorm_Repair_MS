@@ -1,0 +1,377 @@
+{% extends 'base.html' %}
+
+{% block title %}报修单管理 - 宿舍报修管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>报修单管理</h2>
+    <p class="text-muted">查看和管理所有报修单</p>
+</div>
+
+<div class="stats-row">
+    <div class="stat-item">
+        <span class="stat-num">{{ total }}</span>
+        <span class="stat-text">总报修</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-num">{{ pending }}</span>
+        <span class="stat-text">待处理</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-num">{{ processing }}</span>
+        <span class="stat-text">处理中</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-num">{{ completed }}</span>
+        <span class="stat-text">已完成</span>
+    </div>
+</div>
+
+<div class="filter-bar">
+    <form method="get" class="filter-form">
+        <input type="text" name="keyword" class="form-input filter-input" value="{{ keyword }}" placeholder="搜索标题...">
+        <select name="status" class="form-select filter-select">
+            <option value="">全部状态</option>
+            <option value="pending" {% if current_status == 'pending' %}selected{% endif %}>待处理</option>
+            <option value="processing" {% if current_status == 'processing' %}selected{% endif %}>处理中</option>
+            <option value="completed" {% if current_status == 'completed' %}selected{% endif %}>已完成</option>
+            <option value="cancelled" {% if current_status == 'cancelled' %}selected{% endif %}>已取消</option>
+        </select>
+        <select name="repair_type" class="form-select filter-select">
+            <option value="">全部类型</option>
+            <option value="electric" {% if current_type == 'electric' %}selected{% endif %}>水电</option>
+            <option value="door" {% if current_type == 'door' %}selected{% endif %}>门窗</option>
+            <option value="furniture" {% if current_type == 'furniture' %}selected{% endif %}>家具</option>
+            <option value="network" {% if current_type == 'network' %}selected{% endif %}>网络</option>
+            <option value="other" {% if current_type == 'other' %}selected{% endif %}>其他</option>
+        </select>
+        <button type="submit" class="btn btn-primary">筛选</button>
+        <a href="{% url 'repairs:repair_manage' %}" class="btn btn-secondary">重置</a>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="selectAll"></th>
+                    <th>ID</th>
+                    <th>标题</th>
+                    <th>类型</th>
+                    <th>宿舍</th>
+                    <th>提交人</th>
+                    <th>状态</th>
+                    <th>提交时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in page_obj %}
+                <tr>
+                    <td><input type="checkbox" class="repair-checkbox" value="{{ item.id }}"></td>
+                    <td>{{ item.id }}</td>
+                    <td>{{ item.title }}</td>
+                    <td>{{ item.get_repair_type_display }}</td>
+                    <td>{{ item.dorm_building }} {{ item.dorm_room }}</td>
+                    <td>{{ item.student.username }}</td>
+                    <td><span class="badge badge-{{ item.status }}">{{ item.get_status_display }}</span></td>
+                    <td>{{ item.created_at|date:"Y-m-d H:i" }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-info" onclick="viewDetail('{{ item.id }}')">详情</button>
+                        <button class="btn btn-sm btn-warning" onclick="editRepair('{{ item.id }}')">编辑</button>
+                        {% if item.status == 'pending' %}
+                        <button class="btn btn-sm btn-success" onclick="assignWorker('{{ item.id }}')">派单</button>
+                        {% endif %}
+                        <button class="btn btn-sm btn-danger" onclick="deleteRepair('{{ item.id }}')">删除</button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center">暂无报修记录</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if page_obj.has_other_pages %}
+<div class="pagination">
+    {% if page_obj.has_previous %}
+    <a href="?page=1{{ filter_params }}" class="page-btn">首页</a>
+    <a href="?page={{ page_obj.previous_page_number }}{{ filter_params }}" class="page-btn">上一页</a>
+    {% endif %}
+    
+    <span class="page-info">第 {{ page_obj.number }} 页 / 共 {{ page_obj.paginator.num_pages }} 页</span>
+    
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}{{ filter_params }}" class="page-btn">下一页</a>
+    <a href="?page={{ page_obj.paginator.num_pages }}{{ filter_params }}" class="page-btn">末页</a>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="batch-actions">
+    <span>批量操作：</span>
+    <button class="btn btn-sm btn-warning" onclick="batchUpdateStatus('processing')">设为处理中</button>
+    <button class="btn btn-sm btn-success" onclick="batchUpdateStatus('completed')">设为已完成</button>
+    <button class="btn btn-sm btn-secondary" onclick="batchUpdateStatus('cancelled')">设为已取消</button>
+</div>
+
+<div id="detailModal" class="modal">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h3>报修详情</h3>
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+    </div>
+</div>
+
+<div id="editModal" class="modal">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h3>编辑报修单</h3>
+            <span class="modal-close" onclick="closeEditModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="editForm">
+                <div class="form-group">
+                    <label class="form-label">报修标题</label>
+                    <input type="text" id="editTitle" class="form-input" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">报修类型</label>
+                        <select id="editType" class="form-select">
+                            <option value="electric">水电</option>
+                            <option value="door">门窗</option>
+                            <option value="furniture">家具</option>
+                            <option value="network">网络</option>
+                            <option value="other">其他</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">状态</label>
+                        <select id="editStatus" class="form-select">
+                            <option value="pending">待处理</option>
+                            <option value="processing">处理中</option>
+                            <option value="completed">已完成</option>
+                            <option value="cancelled">已取消</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">宿舍楼</label>
+                        <input type="text" id="editBuilding" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">房间号</label>
+                        <input type="text" id="editRoom" class="form-input" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">联系电话</label>
+                    <input type="text" id="editPhone" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">问题描述</label>
+                    <textarea id="editDescription" class="form-textarea" rows="4" required></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-primary" onclick="saveEdit()">保存</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentEditId = null;
+
+function viewDetail(id) {
+    fetch(`/repairs/admin/${id}/`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const r = data.data;
+                let imagesHtml = '';
+                if (r.images.length > 0) {
+                    imagesHtml = '<div class="repair-images">';
+                    r.images.forEach(img => {
+                        imagesHtml += `<img src="${img.url}" class="repair-img" onclick="window.open('${img.url}')">`;
+                    });
+                    imagesHtml += '</div>';
+                }
+                let workOrderHtml = '';
+                if (r.work_order) {
+                    workOrderHtml = `
+                        <div class="work-order-info">
+                            <p><strong>工单状态：</strong>${r.work_order.status_display}</p>
+                            <p><strong>维修工：</strong>${r.work_order.worker_name || '未分配'}</p>
+                            <p><strong>派单时间：</strong>${r.work_order.assigned_at || '-'}</p>
+                        </div>
+                    `;
+                }
+                document.getElementById('modalBody').innerHTML = `
+                    <div class="user-detail">
+                        <p><strong>报修ID：</strong>${r.id}</p>
+                        <p><strong>标题：</strong>${r.title}</p>
+                        <p><strong>类型：</strong>${r.repair_type_display}</p>
+                        <p><strong>描述：</strong>${r.description}</p>
+                        <p><strong>宿舍：</strong>${r.dorm_building} ${r.dorm_room}</p>
+                        <p><strong>联系电话：</strong>${r.contact_phone}</p>
+                        <p><strong>提交人：</strong>${r.student_name}</p>
+                        <p><strong>状态：</strong>${r.status_display}</p>
+                        <p><strong>提交时间：</strong>${r.created_at}</p>
+                        ${imagesHtml}
+                        ${workOrderHtml}
+                    </div>
+                `;
+                document.getElementById('detailModal').style.display = 'block';
+            }
+        });
+}
+
+function editRepair(id) {
+    currentEditId = id;
+    fetch(`/repairs/admin/${id}/`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const r = data.data;
+                document.getElementById('editTitle').value = r.title;
+                document.getElementById('editType').value = r.repair_type;
+                document.getElementById('editStatus').value = r.status;
+                document.getElementById('editBuilding').value = r.dorm_building;
+                document.getElementById('editRoom').value = r.dorm_room;
+                document.getElementById('editPhone').value = r.contact_phone;
+                document.getElementById('editDescription').value = r.description;
+                document.getElementById('editModal').style.display = 'block';
+            }
+        });
+}
+
+function saveEdit() {
+    const data = {
+        title: document.getElementById('editTitle').value,
+        repair_type: document.getElementById('editType').value,
+        status: document.getElementById('editStatus').value,
+        dorm_building: document.getElementById('editBuilding').value,
+        dorm_room: document.getElementById('editRoom').value,
+        contact_phone: document.getElementById('editPhone').value,
+        description: document.getElementById('editDescription').value
+    };
+    
+    fetch(`/repairs/admin/${currentEditId}/update/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert('更新成功');
+            location.reload();
+        } else {
+            alert('更新失败：' + data.message);
+        }
+    });
+}
+
+function deleteRepair(id) {
+    if (confirm('确定要删除此报修单吗？此操作不可恢复！')) {
+        fetch(`/repairs/admin/${id}/delete/`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': getCookie('csrftoken')}
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert('删除成功');
+                location.reload();
+            } else {
+                alert('删除失败：' + data.message);
+            }
+        });
+    }
+}
+
+function assignWorker(id) {
+    window.location.href = `/workorders/assign/${id}/`;
+}
+
+function closeModal() {
+    document.getElementById('detailModal').style.display = 'none';
+}
+
+function closeEditModal() {
+    document.getElementById('editModal').style.display = 'none';
+}
+
+document.getElementById('selectAll').addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.repair-checkbox');
+    checkboxes.forEach(cb => cb.checked = this.checked);
+});
+
+function batchUpdateStatus(status) {
+    const checkboxes = document.querySelectorAll('.repair-checkbox:checked');
+    const ids = Array.from(checkboxes).map(cb => parseInt(cb.value));
+    
+    if (ids.length === 0) {
+        alert('请先选择要操作的报修单');
+        return;
+    }
+    
+    if (confirm(`确定要将选中的 ${ids.length} 条报修单状态更新吗？`)) {
+        fetch('/repairs/admin/batch-update-status/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ids: ids, status: status})
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('操作失败：' + data.message);
+            }
+        });
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+window.onclick = function(event) {
+    const detailModal = document.getElementById('detailModal');
+    const editModal = document.getElementById('editModal');
+    if (event.target == detailModal) closeModal();
+    if (event.target == editModal) closeEditModal();
+}
+</script>
+{% endblock %}

@@ -967,3 +967,37 @@ a:hover {
 .repair-form {
     max-width: 700px;
 }
+
+.batch-actions {
+    margin: 20px 0;
+    padding: 15px;
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.batch-actions span {
+    font-weight: 500;
+    color: var(--text-light);
+}
+
+.work-order-info {
+    margin-top: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: var(--radius);
+    border-left: 4px solid var(--primary-color);
+}
+
+.filter-input {
+    width: 200px;
+}
+
+.table input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
