@@ -105,7 +105,7 @@ MEDIA_ROOT = BASE_DIR / 'media'  # 上传文件存储目录
 
 # 用户认证配置
 AUTH_USER_MODEL = 'users.User'  # 自定义用户模型
-LOGIN_URL = '/users/login/'  # 登录页面
+LOGIN_URL = '/users/login/'
 LOGIN_REDIRECT_URL = '/'  # 登录后跳转页面
 LOGOUT_REDIRECT_URL = '/users/login/'  # 退出后跳转页面
 

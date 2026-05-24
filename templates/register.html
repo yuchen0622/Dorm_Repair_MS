@@ -5,7 +5,7 @@
 {% block content %}
 <div class="form-container">
     <h2 class="form-title">用户注册</h2>
-    <form method="post" action="{% url 'register' %}">
+    <form method="post" action="{% url 'users:register' %}">
         {% csrf_token %}
         <div class="form-group">
             <label class="form-label" for="username">用户名</label>
@@ -38,7 +38,7 @@
         <button type="submit" class="btn btn-primary btn-block">注册</button>
     </form>
     <div class="form-footer">
-        已有账号？<a href="{% url 'login' %}">立即登录</a>
+        已有账号？<a href="{% url 'users:login' %}">立即登录</a>
     </div>
 </div>
 {% endblock %}

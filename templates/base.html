@@ -28,11 +28,11 @@
                         <a href="#" class="nav-link">派单管理</a>
                         <a href="#" class="nav-link">用户管理</a>
                     {% endif %}
-                    <a href="#" class="nav-link">个人中心</a>
-                    <a href="{% url 'logout' %}" class="nav-link nav-logout">退出登录</a>
+                    <a href="{% url 'users:profile' %}" class="nav-link">个人中心</a>
+                    <a href="{% url 'users:logout' %}" class="nav-link nav-logout">退出登录</a>
                 {% else %}
-                    <a href="{% url 'login' %}" class="nav-link">登录</a>
-                    <a href="{% url 'register' %}" class="nav-link nav-register">注册</a>
+                    <a href="{% url 'users:login' %}" class="nav-link">登录</a>
+                    <a href="{% url 'users:register' %}" class="nav-link nav-register">注册</a>
                 {% endif %}
             </div>
         </div>
