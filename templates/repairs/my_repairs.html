@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+
+{% block title %}我的报修 - 宿舍报修管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>我的报修</h2>
+    <p class="text-muted">查看您提交的所有报修单</p>
+</div>
+
+<div class="stats-row">
+    <div class="stat-item">
+        <span class="stat-num">{{ total }}</span>
+        <span class="stat-text">总报修</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-num">{{ pending }}</span>
+        <span class="stat-text">待处理</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-num">{{ processing }}</span>
+        <span class="stat-text">处理中</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-num">{{ completed }}</span>
+        <span class="stat-text">已完成</span>
+    </div>
+</div>
+
+<div class="filter-bar">
+    <form method="get" class="filter-form">
+        <select name="status" class="form-select filter-select">
+            <option value="">全部状态</option>
+            <option value="pending" {% if current_status == 'pending' %}selected{% endif %}>待处理</option>
+            <option value="processing" {% if current_status == 'processing' %}selected{% endif %}>处理中</option>
+            <option value="completed" {% if current_status == 'completed' %}selected{% endif %}>已完成</option>
+            <option value="cancelled" {% if current_status == 'cancelled' %}selected{% endif %}>已取消</option>
+        </select>
+        <button type="submit" class="btn btn-primary">筛选</button>
+        <a href="{% url 'repairs:my_repairs' %}" class="btn btn-secondary">重置</a>
+        <a href="{% url 'repairs:repair_create' %}" class="btn btn-success">提交报修</a>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>标题</th>
+                    <th>类型</th>
+                    <th>宿舍</th>
+                    <th>状态</th>
+                    <th>提交时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in page_obj %}
+                <tr>
+                    <td>{{ item.title }}</td>
+                    <td>{{ item.get_repair_type_display }}</td>
+                    <td>{{ item.dorm_building }} {{ item.dorm_room }}</td>
+                    <td><span class="badge badge-{{ item.status }}">{{ item.get_status_display }}</span></td>
+                    <td>{{ item.created_at|date:"Y-m-d H:i" }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-info" onclick="viewDetail('{{ item.id }}')">详情</button>
+                        {% if item.status == 'pending' %}
+                        <button class="btn btn-sm btn-warning" onclick="editRepair('{{ item.id }}')">编辑</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteRepair('{{ item.id }}')">删除</button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center">暂无报修记录</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if page_obj.has_other_pages %}
+<div class="pagination">
+    {% if page_obj.has_previous %}
+    <a href="?page=1{% if current_status %}&status={{ current_status }}{% endif %}" class="page-btn">首页</a>
+    <a href="?page={{ page_obj.previous_page_number }}{% if current_status %}&status={{ current_status }}{% endif %}" class="page-btn">上一页</a>
+    {% endif %}
+    
+    <span class="page-info">第 {{ page_obj.number }} 页 / 共 {{ page_obj.paginator.num_pages }} 页</span>
+    
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}{% if current_status %}&status={{ current_status }}{% endif %}" class="page-btn">下一页</a>
+    <a href="?page={{ page_obj.paginator.num_pages }}{% if current_status %}&status={{ current_status }}{% endif %}" class="page-btn">末页</a>
+    {% endif %}
+</div>
+{% endif %}
+
+<div id="detailModal" class="modal">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h3>报修详情</h3>
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function viewDetail(id) {
+    fetch(`/repairs/api/${id}/`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const r = data.data;
+                let imagesHtml = '';
+                if (r.images.length > 0) {
+                    imagesHtml = '<div class="repair-images">';
+                    r.images.forEach(img => {
+                        imagesHtml += `<img src="${img.url}" class="repair-img" onclick="window.open('${img.url}')">`;
+                    });
+                    imagesHtml += '</div>';
+                }
+                document.getElementById('modalBody').innerHTML = `
+                    <div class="user-detail">
+                        <p><strong>标题：</strong>${r.title}</p>
+                        <p><strong>类型：</strong>${r.repair_type_display}</p>
+                        <p><strong>描述：</strong>${r.description}</p>
+                        <p><strong>宿舍：</strong>${r.dorm_building} ${r.dorm_room}</p>
+                        <p><strong>联系电话：</strong>${r.contact_phone}</p>
+                        <p><strong>状态：</strong>${r.status_display}</p>
+                        <p><strong>提交时间：</strong>${r.created_at}</p>
+                        ${imagesHtml}
+                    </div>
+                `;
+                document.getElementById('detailModal').style.display = 'block';
+            }
+        });
+}
+
+function editRepair(id) {
+    window.location.href = `/repairs/${id}/edit/`;
+}
+
+function deleteRepair(id) {
+    if (confirm('确定要删除此报修单吗？')) {
+        fetch(`/repairs/api/${id}/delete/`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': getCookie('csrftoken')}
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert('删除成功');
+                location.reload();
+            } else {
+                alert('删除失败：' + data.message);
+            }
+        });
+    }
+}
+
+function closeModal() {
+    document.getElementById('detailModal').style.display = 'none';
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+window.onclick = function(event) {
+    const modal = document.getElementById('detailModal');
+    if (event.target == modal) closeModal();
+}
+</script>
+{% endblock %}
