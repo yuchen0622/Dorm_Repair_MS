@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block title %}评价统计 - 宿舍报修管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>评价统计</h2>
+    <p class="text-muted">查看维修工评价统计和排行榜</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stats-card">
+        <h3>总评价数</h3>
+        <div class="stats-number" id="totalReviews">0</div>
+        <div class="stats-label">条评价</div>
+    </div>
+    <div class="stats-card">
+        <h3>平均评分</h3>
+        <div class="stats-number" id="avgRating">0</div>
+        <div class="stats-label">分</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h3>评分分布</h3>
+        <div id="ratingDistribution"></div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h3>维修工排行榜</h3>
+        <div id="workerRanking"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadStats();
+    loadRanking();
+});
+
+function loadStats() {
+    fetch('/reviews/api/stats/')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const stats = data.data;
+                document.getElementById('totalReviews').textContent = stats.total;
+                document.getElementById('avgRating').textContent = stats.avg_rating;
+                
+                let distHtml = '';
+                const total = stats.total || 1;
+                for (let i = 5; i >= 1; i--) {
+                    const count = stats.rating_distribution[i];
+                    const percent = (count / total * 100).toFixed(1);
+                    distHtml += `
+                        <div class="rating-bar">
+                            <span class="rating-bar-label">${i}星</span>
+                            <div class="rating-bar-track">
+                                <div class="rating-bar-fill" style="width: ${percent}%"></div>
+                            </div>
+                            <span class="rating-bar-count">${count}</span>
+                        </div>
+                    `;
+                }
+                document.getElementById('ratingDistribution').innerHTML = distHtml;
+            }
+        });
+}
+
+function loadRanking() {
+    fetch('/reviews/api/ranking/')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                let html = '<ul class="ranking-list">';
+                data.data.forEach(item => {
+                    let posClass = '';
+                    if (item.rank === 1) posClass = 'gold';
+                    else if (item.rank === 2) posClass = 'silver';
+                    else if (item.rank === 3) posClass = 'bronze';
+                    
+                    html += `
+                        <li class="ranking-item">
+                            <div class="ranking-position ${posClass}">${item.rank}</div>
+                            <div class="ranking-info">
+                                <div class="ranking-name">${item.worker_name}</div>
+                                <div class="ranking-stats">平均评分：${item.avg_rating}分 | 评价数：${item.review_count}</div>
+                            </div>
+                        </li>
+                    `;
+                });
+                html += '</ul>';
+                
+                if (data.data.length === 0) {
+                    html = '<p class="text-muted">暂无评价数据</p>';
+                }
+                
+                document.getElementById('workerRanking').innerHTML = html;
+            }
+        });
+}
+</script>
+{% endblock %}

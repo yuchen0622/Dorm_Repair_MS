@@ -68,6 +68,12 @@
                         {% if item.status == 'pending' %}
                         <button class="btn btn-sm btn-warning" onclick="editRepair('{{ item.id }}')">编辑</button>
                         <button class="btn btn-sm btn-danger" onclick="deleteRepair('{{ item.id }}')">删除</button>
+                        {% elif item.status == 'completed' %}
+                            {% if not item.work_order.review %}
+                            <a href="{% url 'reviews:review_create' item.work_order.id %}" class="btn btn-sm btn-success">评价</a>
+                            {% else %}
+                            <span class="text-muted">已评价</span>
+                            {% endif %}
                         {% endif %}
                     </td>
                 </tr>

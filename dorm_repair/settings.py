@@ -21,7 +21,7 @@ INSTALLED_APPS = [
     'users',
     'repairs',
     'workorders',
-    'evaluations',
+    'reviews',
     # Django内置应用
     'django.contrib.admin',
     'django.contrib.auth',

@@ -27,6 +27,7 @@
                     {% elif user.role == 'admin' %}
                         <a href="{% url 'repairs:repair_manage' %}" class="nav-link">报修管理</a>
                         <a href="{% url 'workorders:work_order_manage' %}" class="nav-link">工单管理</a>
+                        <a href="{% url 'reviews:review_stats' %}" class="nav-link">评价统计</a>
                         <a href="{% url 'users:user_manage' %}" class="nav-link">用户管理</a>
                     {% endif %}
                     <a href="{% url 'users:profile' %}" class="nav-link">个人中心</a>
