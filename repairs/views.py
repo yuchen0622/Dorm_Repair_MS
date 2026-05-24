@@ -19,6 +19,16 @@ def student_required(view_func):
     return wrapper
 
 
+def admin_required(view_func):
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return JsonResponse({'success': False, 'message': '请先登录'}, status=401)
+        if not request.user.is_admin():
+            return JsonResponse({'success': False, 'message': '仅管理员可操作'}, status=403)
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
 @login_required
 def my_repairs(request):
     if not request.user.is_student():
@@ -43,6 +53,52 @@ def my_repairs(request):
         'completed': RepairRequest.objects.filter(student=request.user, status='completed').count(),
     }
     return render(request, 'repairs/my_repairs.html', context)
+
+
+@login_required
+def repair_manage(request):
+    if not request.user.is_admin():
+        messages.error(request, '仅管理员可访问')
+        return redirect('index')
+    
+    status = request.GET.get('status', '')
+    repair_type = request.GET.get('repair_type', '')
+    keyword = request.GET.get('keyword', '').strip()
+    
+    repairs = RepairRequest.objects.all()
+    
+    if status:
+        repairs = repairs.filter(status=status)
+    if repair_type:
+        repairs = repairs.filter(repair_type=repair_type)
+    if keyword:
+        repairs = repairs.filter(title__icontains=keyword)
+    
+    repairs = repairs.order_by('-created_at')
+    paginator = Paginator(repairs, 10)
+    page = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page)
+    
+    filter_params = ''
+    if status:
+        filter_params += f'&status={status}'
+    if repair_type:
+        filter_params += f'&repair_type={repair_type}'
+    if keyword:
+        filter_params += f'&keyword={keyword}'
+    
+    context = {
+        'page_obj': page_obj,
+        'current_status': status,
+        'current_type': repair_type,
+        'keyword': keyword,
+        'filter_params': filter_params,
+        'total': RepairRequest.objects.count(),
+        'pending': RepairRequest.objects.filter(status='pending').count(),
+        'processing': RepairRequest.objects.filter(status='processing').count(),
+        'completed': RepairRequest.objects.filter(status='completed').count(),
+    }
+    return render(request, 'repairs/repair_manage.html', context)
 
 
 @login_required
@@ -359,3 +415,183 @@ def api_repair_stats(request):
             'completed': completed
         }
     })
+
+
+@admin_required
+@require_GET
+def admin_repair_list(request):
+    page = int(request.GET.get('page', 1))
+    page_size = int(request.GET.get('page_size', 10))
+    status = request.GET.get('status', '')
+    repair_type = request.GET.get('repair_type', '')
+    keyword = request.GET.get('keyword', '').strip()
+    
+    repairs = RepairRequest.objects.all()
+    
+    if status:
+        repairs = repairs.filter(status=status)
+    if repair_type:
+        repairs = repairs.filter(repair_type=repair_type)
+    if keyword:
+        repairs = repairs.filter(title__icontains=keyword)
+    
+    repairs = repairs.order_by('-created_at')
+    paginator = Paginator(repairs, page_size)
+    page_obj = paginator.get_page(page)
+    
+    repair_list = []
+    for repair in page_obj:
+        images = [img.image.url for img in repair.images.all()]
+        repair_list.append({
+            'id': repair.id,
+            'title': repair.title,
+            'description': repair.description,
+            'repair_type': repair.repair_type,
+            'repair_type_display': repair.get_repair_type_display(),
+            'dorm_building': repair.dorm_building,
+            'dorm_room': repair.dorm_room,
+            'contact_phone': repair.contact_phone,
+            'status': repair.status,
+            'status_display': repair.get_status_display(),
+            'student_id': repair.student.id,
+            'student_name': repair.student.username,
+            'created_at': repair.created_at.strftime('%Y-%m-%d %H:%M'),
+            'updated_at': repair.updated_at.strftime('%Y-%m-%d %H:%M'),
+            'images': images
+        })
+    
+    return JsonResponse({
+        'success': True,
+        'data': {
+            'repairs': repair_list,
+            'total': paginator.count,
+            'page': page,
+            'page_size': page_size,
+            'total_pages': paginator.num_pages
+        }
+    })
+
+
+@admin_required
+@require_GET
+def admin_repair_detail(request, repair_id):
+    repair = get_object_or_404(RepairRequest, id=repair_id)
+    
+    images = [{'id': img.id, 'url': img.image.url} for img in repair.images.all()]
+    
+    work_order = None
+    if hasattr(repair, 'work_order'):
+        wo = repair.work_order
+        work_order = {
+            'id': wo.id,
+            'status': wo.status,
+            'status_display': wo.get_status_display(),
+            'worker_id': wo.worker.id if wo.worker else None,
+            'worker_name': wo.worker.username if wo.worker else None,
+            'assigned_at': wo.assigned_at.strftime('%Y-%m-%d %H:%M') if wo.assigned_at else None,
+            'completed_at': wo.completed_at.strftime('%Y-%m-%d %H:%M') if wo.completed_at else None,
+        }
+    
+    return JsonResponse({
+        'success': True,
+        'data': {
+            'id': repair.id,
+            'title': repair.title,
+            'description': repair.description,
+            'repair_type': repair.repair_type,
+            'repair_type_display': repair.get_repair_type_display(),
+            'dorm_building': repair.dorm_building,
+            'dorm_room': repair.dorm_room,
+            'contact_phone': repair.contact_phone,
+            'status': repair.status,
+            'status_display': repair.get_status_display(),
+            'student_id': repair.student.id,
+            'student_name': repair.student.username,
+            'created_at': repair.created_at.strftime('%Y-%m-%d %H:%M'),
+            'updated_at': repair.updated_at.strftime('%Y-%m-%d %H:%M'),
+            'images': images,
+            'work_order': work_order
+        }
+    })
+
+
+@admin_required
+@require_POST
+def admin_repair_update(request, repair_id):
+    try:
+        repair = get_object_or_404(RepairRequest, id=repair_id)
+        data = json.loads(request.body)
+        
+        if 'title' in data:
+            repair.title = data['title'].strip()
+        if 'description' in data:
+            repair.description = data['description'].strip()
+        if 'repair_type' in data:
+            repair.repair_type = data['repair_type']
+        if 'dorm_building' in data:
+            repair.dorm_building = data['dorm_building'].strip()
+        if 'dorm_room' in data:
+            repair.dorm_room = data['dorm_room'].strip()
+        if 'contact_phone' in data:
+            repair.contact_phone = data['contact_phone'].strip()
+        if 'status' in data:
+            if data['status'] in dict(RepairRequest.STATUS_CHOICES).keys():
+                repair.status = data['status']
+        
+        repair.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': '报修单更新成功',
+            'data': {
+                'id': repair.id,
+                'title': repair.title,
+                'status': repair.status,
+                'status_display': repair.get_status_display()
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+
+@admin_required
+@require_POST
+def admin_repair_delete(request, repair_id):
+    try:
+        repair = get_object_or_404(RepairRequest, id=repair_id)
+        
+        if hasattr(repair, 'work_order'):
+            repair.work_order.delete()
+        
+        repair.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': '报修单已删除'
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+
+@admin_required
+@require_POST
+def admin_repair_batch_update_status(request):
+    try:
+        data = json.loads(request.body)
+        repair_ids = data.get('ids', [])
+        new_status = data.get('status')
+        
+        if not repair_ids or not new_status:
+            return JsonResponse({'success': False, 'message': '参数不完整'}, status=400)
+        
+        if new_status not in dict(RepairRequest.STATUS_CHOICES).keys():
+            return JsonResponse({'success': False, 'message': '无效的状态值'}, status=400)
+        
+        updated_count = RepairRequest.objects.filter(id__in=repair_ids).update(status=new_status)
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'成功更新 {updated_count} 条报修单状态'
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
