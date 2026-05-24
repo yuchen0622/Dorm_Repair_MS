@@ -16,8 +16,8 @@
                 <a href="#" class="btn btn-primary">派单管理</a>
             {% endif %}
         {% else %}
-            <a href="{% url 'login' %}" class="btn btn-primary">立即登录</a>
-            <a href="{% url 'register' %}" class="btn btn-outline">注册账号</a>
+            <a href="{% url 'users:login' %}" class="btn btn-primary">立即登录</a>
+            <a href="{% url 'users:register' %}" class="btn btn-outline">注册账号</a>
         {% endif %}
     </div>
 </div>

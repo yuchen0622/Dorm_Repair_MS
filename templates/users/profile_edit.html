@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block title %}编辑个人信息 - 宿舍报修管理系统{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h2 class="form-title">编辑个人信息</h2>
+    <form method="post" action="{% url 'users:profile_edit' %}">
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label class="form-label">用户名</label>
+            <input type="text" class="form-input" value="{{ user.username }}" disabled>
+            <small class="form-hint">用户名不可修改</small>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">邮箱</label>
+            <input type="email" class="form-input" value="{{ user.email }}" disabled>
+            <small class="form-hint">邮箱不可修改</small>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">用户类型</label>
+            <input type="text" class="form-input" value="{{ user.get_role_display }}" disabled>
+            <small class="form-hint">用户类型不可修改</small>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="phone">联系电话</label>
+            <input type="tel" class="form-input" id="phone" name="phone" 
+                   value="{{ user.phone }}" placeholder="请输入联系电话">
+        </div>
+
+        {% if user.role == 'student' %}
+        <div class="form-group">
+            <label class="form-label" for="dorm_building">宿舍楼</label>
+            <input type="text" class="form-input" id="dorm_building" name="dorm_building" 
+                   value="{{ user.dorm_building }}" placeholder="请输入宿舍楼">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="dorm_room">宿舍房间号</label>
+            <input type="text" class="form-input" id="dorm_room" name="dorm_room" 
+                   value="{{ user.dorm_room }}" placeholder="请输入宿舍房间号">
+        </div>
+        {% endif %}
+
+        {% if user.role == 'worker' %}
+        <div class="form-group">
+            <label class="form-label" for="specialty">维修专长</label>
+            <input type="text" class="form-input" id="specialty" name="specialty" 
+                   value="{{ user.specialty }}" placeholder="请输入维修专长，如：水电、家具等">
+        </div>
+        {% endif %}
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">保存修改</button>
+            <a href="{% url 'users:profile' %}" class="btn btn-secondary">取消</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
