@@ -1,0 +1,316 @@
+{% extends 'base.html' %}
+
+{% block title %}维修工工作台 - 宿舍报修管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>维修工工作台</h2>
+    <p class="text-muted">查看您的工单并进行维修操作</p>
+</div>
+
+<div class="stats-row">
+    <div class="stat-item">
+        <span class="stat-num">{{ pending }}</span>
+        <span class="stat-text">待接单</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-num">{{ accepted }}</span>
+        <span class="stat-text">已接单</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-num">{{ in_progress }}</span>
+        <span class="stat-text">维修中</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-num">{{ completed }}</span>
+        <span class="stat-text">已完成</span>
+    </div>
+</div>
+
+<div class="filter-bar">
+    <form method="get" class="filter-form">
+        <select name="status" class="form-select filter-select">
+            <option value="">全部状态</option>
+            <option value="assigned" {% if current_status == 'assigned' %}selected{% endif %}>待接单</option>
+            <option value="accepted" {% if current_status == 'accepted' %}selected{% endif %}>已接单</option>
+            <option value="in_progress" {% if current_status == 'in_progress' %}selected{% endif %}>维修中</option>
+            <option value="completed" {% if current_status == 'completed' %}selected{% endif %}>已完成</option>
+            <option value="rejected" {% if current_status == 'rejected' %}selected{% endif %}>已拒绝</option>
+        </select>
+        <button type="submit" class="btn btn-primary">筛选</button>
+        <a href="{% url 'workorders:worker_dashboard' %}" class="btn btn-secondary">重置</a>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>工单ID</th>
+                    <th>报修标题</th>
+                    <th>类型</th>
+                    <th>宿舍</th>
+                    <th>联系电话</th>
+                    <th>状态</th>
+                    <th>派单时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in page_obj %}
+                <tr>
+                    <td>{{ item.id }}</td>
+                    <td>{{ item.repair_request.title }}</td>
+                    <td>{{ item.repair_request.get_repair_type_display }}</td>
+                    <td>{{ item.repair_request.dorm_building }} {{ item.repair_request.dorm_room }}</td>
+                    <td>{{ item.repair_request.contact_phone }}</td>
+                    <td><span class="badge badge-{{ item.status }}">{{ item.get_status_display }}</span></td>
+                    <td>{{ item.assigned_at|date:"Y-m-d H:i" }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-info" onclick="viewDetail('{{ item.id }}')">详情</button>
+                        {% if item.status == 'assigned' %}
+                        <button class="btn btn-sm btn-success" onclick="acceptOrder('{{ item.id }}')">接单</button>
+                        <button class="btn btn-sm btn-danger" onclick="rejectOrder('{{ item.id }}')">拒绝</button>
+                        {% elif item.status == 'accepted' %}
+                        <button class="btn btn-sm btn-warning" onclick="startWork('{{ item.id }}')">开始维修</button>
+                        {% elif item.status == 'in_progress' %}
+                        <button class="btn btn-sm btn-success" onclick="completeWork('{{ item.id }}')">完成维修</button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center">暂无工单</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if page_obj.has_other_pages %}
+<div class="pagination">
+    {% if page_obj.has_previous %}
+    <a href="?page=1{% if current_status %}&status={{ current_status }}{% endif %}" class="page-btn">首页</a>
+    <a href="?page={{ page_obj.previous_page_number }}{% if current_status %}&status={{ current_status }}{% endif %}" class="page-btn">上一页</a>
+    {% endif %}
+    
+    <span class="page-info">第 {{ page_obj.number }} 页 / 共 {{ page_obj.paginator.num_pages }} 页</span>
+    
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}{% if current_status %}&status={{ current_status }}{% endif %}" class="page-btn">下一页</a>
+    <a href="?page={{ page_obj.paginator.num_pages }}{% if current_status %}&status={{ current_status }}{% endif %}" class="page-btn">末页</a>
+    {% endif %}
+</div>
+{% endif %}
+
+<div id="detailModal" class="modal">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h3>工单详情</h3>
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+    </div>
+</div>
+
+<div id="completeModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>完成维修</h3>
+            <span class="modal-close" onclick="closeCompleteModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">维修备注</label>
+                <textarea id="remark" class="form-textarea" rows="4" placeholder="请填写维修情况说明..."></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-primary" onclick="submitComplete()">确认完成</button>
+                <button type="button" class="btn btn-secondary" onclick="closeCompleteModal()">取消</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="rejectModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>拒绝工单</h3>
+            <span class="modal-close" onclick="closeRejectModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">拒绝原因</label>
+                <textarea id="reason" class="form-textarea" rows="3" placeholder="请填写拒绝原因..."></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-danger" onclick="submitReject()">确认拒绝</button>
+                <button type="button" class="btn btn-secondary" onclick="closeRejectModal()">取消</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentWorkOrderId = null;
+
+function viewDetail(id) {
+    fetch(`/workorders/api/${id}/`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const d = data.data;
+                document.getElementById('modalBody').innerHTML = `
+                    <div class="user-detail">
+                        <p><strong>工单ID：</strong>${d.id}</p>
+                        <p><strong>报修标题：</strong>${d.repair_title}</p>
+                        <p><strong>报修类型：</strong>${d.repair_type}</p>
+                        <p><strong>问题描述：</strong>${d.repair_description}</p>
+                        <p><strong>宿舍：</strong>${d.dorm_building} ${d.dorm_room}</p>
+                        <p><strong>联系电话：</strong>${d.contact_phone}</p>
+                        <p><strong>状态：</strong>${d.status_display}</p>
+                        <p><strong>派单时间：</strong>${d.assigned_at}</p>
+                        <p><strong>接单时间：</strong>${d.accepted_at || '-'}</p>
+                        <p><strong>开始时间：</strong>${d.started_at || '-'}</p>
+                        <p><strong>完成时间：</strong>${d.completed_at || '-'}</p>
+                        <p><strong>维修备注：</strong>${d.remark || '-'}</p>
+                    </div>
+                `;
+                document.getElementById('detailModal').style.display = 'block';
+            }
+        });
+}
+
+function acceptOrder(id) {
+    if (confirm('确认接单？')) {
+        fetch(`/workorders/api/${id}/accept/`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': getCookie('csrftoken')}
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert('接单成功');
+                location.reload();
+            } else {
+                alert('接单失败：' + data.message);
+            }
+        });
+    }
+}
+
+function startWork(id) {
+    if (confirm('确认开始维修？')) {
+        fetch(`/workorders/api/${id}/start/`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': getCookie('csrftoken')}
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert('已开始维修');
+                location.reload();
+            } else {
+                alert('操作失败：' + data.message);
+            }
+        });
+    }
+}
+
+function completeWork(id) {
+    currentWorkOrderId = id;
+    document.getElementById('completeModal').style.display = 'block';
+}
+
+function submitComplete() {
+    const remark = document.getElementById('remark').value;
+    
+    fetch(`/workorders/api/${currentWorkOrderId}/complete/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({remark: remark})
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert('维修完成');
+            location.reload();
+        } else {
+            alert('操作失败：' + data.message);
+        }
+    });
+}
+
+function rejectOrder(id) {
+    currentWorkOrderId = id;
+    document.getElementById('rejectModal').style.display = 'block';
+}
+
+function submitReject() {
+    const reason = document.getElementById('reason').value;
+    
+    fetch(`/workorders/api/${currentWorkOrderId}/reject/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({reason: reason})
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert('已拒绝工单');
+            location.reload();
+        } else {
+            alert('操作失败：' + data.message);
+        }
+    });
+}
+
+function closeModal() {
+    document.getElementById('detailModal').style.display = 'none';
+}
+
+function closeCompleteModal() {
+    document.getElementById('completeModal').style.display = 'none';
+    document.getElementById('remark').value = '';
+}
+
+function closeRejectModal() {
+    document.getElementById('rejectModal').style.display = 'none';
+    document.getElementById('reason').value = '';
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+window.onclick = function(event) {
+    const detailModal = document.getElementById('detailModal');
+    const completeModal = document.getElementById('completeModal');
+    const rejectModal = document.getElementById('rejectModal');
+    if (event.target == detailModal) closeModal();
+    if (event.target == completeModal) closeCompleteModal();
+    if (event.target == rejectModal) closeRejectModal();
+}
+</script>
+{% endblock %}

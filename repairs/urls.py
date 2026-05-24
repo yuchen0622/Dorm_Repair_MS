@@ -11,6 +11,7 @@ urlpatterns = [
     path('api/stats/', views.api_repair_stats, name='api_repair_stats'),
     path('api/create/', views.api_repair_create, name='api_repair_create'),
     path('api/<int:repair_id>/', views.api_repair_detail, name='api_repair_detail'),
+    path('api/<int:repair_id>/progress/', views.api_repair_progress, name='api_repair_progress'),
     path('api/<int:repair_id>/update/', views.api_repair_update, name='api_repair_update'),
     path('api/<int:repair_id>/delete/', views.api_repair_delete, name='api_repair_delete'),
     path('api/<int:repair_id>/upload/', views.api_image_upload, name='api_image_upload'),

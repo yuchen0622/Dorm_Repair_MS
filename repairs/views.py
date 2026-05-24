@@ -231,6 +231,53 @@ def api_repair_detail(request, repair_id):
     })
 
 
+@login_required
+@require_GET
+def api_repair_progress(request, repair_id):
+    repair = get_object_or_404(RepairRequest, id=repair_id)
+    
+    if request.user.is_student() and repair.student != request.user:
+        return JsonResponse({'success': False, 'message': '无权查看'}, status=403)
+    
+    progress = {
+        'submitted': True,
+        'assigned': False,
+        'accepted': False,
+        'started': False,
+        'completed': False,
+        'assigned_at': None,
+        'accepted_at': None,
+        'started_at': None,
+        'completed_at': None,
+        'worker_name': None,
+        'remark': None,
+    }
+    
+    if hasattr(repair, 'work_order'):
+        wo = repair.work_order
+        progress['assigned'] = True
+        progress['assigned_at'] = wo.assigned_at.strftime('%Y-%m-%d %H:%M')
+        progress['worker_name'] = wo.worker.username if wo.worker else None
+        
+        if wo.accepted_at:
+            progress['accepted'] = True
+            progress['accepted_at'] = wo.accepted_at.strftime('%Y-%m-%d %H:%M')
+        
+        if wo.started_at:
+            progress['started'] = True
+            progress['started_at'] = wo.started_at.strftime('%Y-%m-%d %H:%M')
+        
+        if wo.completed_at:
+            progress['completed'] = True
+            progress['completed_at'] = wo.completed_at.strftime('%Y-%m-%d %H:%M')
+            progress['remark'] = wo.remark
+    
+    return JsonResponse({
+        'success': True,
+        'data': progress
+    })
+
+
 @student_required
 @require_POST
 def api_repair_create(request):

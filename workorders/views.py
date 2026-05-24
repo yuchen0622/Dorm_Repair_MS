@@ -53,6 +53,84 @@ def assign_page(request, repair_id):
     return render(request, 'workorders/assign.html', context)
 
 
+@login_required
+def work_order_manage(request):
+    if not request.user.is_admin():
+        messages.error(request, '仅管理员可访问')
+        return redirect('index')
+    
+    status = request.GET.get('status', '')
+    worker_id = request.GET.get('worker_id', '')
+    
+    work_orders = WorkOrder.objects.all()
+    
+    if status:
+        work_orders = work_orders.filter(status=status)
+    if worker_id:
+        work_orders = work_orders.filter(worker_id=worker_id)
+    
+    work_orders = work_orders.order_by('-created_at')
+    
+    from django.core.paginator import Paginator
+    paginator = Paginator(work_orders, 10)
+    page = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page)
+    
+    filter_params = ''
+    if status:
+        filter_params += f'&status={status}'
+    if worker_id:
+        filter_params += f'&worker_id={worker_id}'
+    
+    from users.models import User
+    all_workers = User.objects.filter(role='worker')
+    
+    context = {
+        'page_obj': page_obj,
+        'current_status': status,
+        'current_worker': worker_id,
+        'filter_params': filter_params,
+        'all_workers': all_workers,
+        'total': WorkOrder.objects.count(),
+        'assigned': WorkOrder.objects.filter(status='assigned').count(),
+        'accepted': WorkOrder.objects.filter(status='accepted').count(),
+        'in_progress': WorkOrder.objects.filter(status='in_progress').count(),
+        'completed': WorkOrder.objects.filter(status='completed').count(),
+    }
+    return render(request, 'workorders/work_order_manage.html', context)
+
+
+@login_required
+def worker_dashboard(request):
+    if not request.user.is_worker():
+        messages.error(request, '仅维修工可访问')
+        return redirect('index')
+    
+    status = request.GET.get('status', '')
+    
+    work_orders = WorkOrder.objects.filter(worker=request.user)
+    
+    if status:
+        work_orders = work_orders.filter(status=status)
+    
+    work_orders = work_orders.order_by('-created_at')
+    
+    from django.core.paginator import Paginator
+    paginator = Paginator(work_orders, 10)
+    page = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page)
+    
+    context = {
+        'page_obj': page_obj,
+        'current_status': status,
+        'pending': WorkOrder.objects.filter(worker=request.user, status='assigned').count(),
+        'accepted': WorkOrder.objects.filter(worker=request.user, status='accepted').count(),
+        'in_progress': WorkOrder.objects.filter(worker=request.user, status='in_progress').count(),
+        'completed': WorkOrder.objects.filter(worker=request.user, status='completed').count(),
+    }
+    return render(request, 'workorders/worker_dashboard.html', context)
+
+
 @admin_required
 @require_GET
 def api_worker_list(request):
@@ -224,10 +302,16 @@ def api_work_order_list(request):
     })
 
 
-@admin_required
+@login_required
 @require_GET
 def api_work_order_detail(request, work_order_id):
     work_order = get_object_or_404(WorkOrder, id=work_order_id)
+    
+    if request.user.is_worker() and work_order.worker != request.user:
+        return JsonResponse({'success': False, 'message': '无权查看此工单'}, status=403)
+    
+    if request.user.is_student():
+        return JsonResponse({'success': False, 'message': '无权访问'}, status=403)
     
     logs = []
     for log in work_order.logs.all():
