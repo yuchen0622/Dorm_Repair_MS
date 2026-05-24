@@ -418,6 +418,61 @@ a:hover {
     color: #721c24;
 }
 
+.badge-assigned {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.badge-accepted {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.badge-in_progress {
+    background: #d4edda;
+    color: #155724;
+}
+
+.badge-rejected {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.logs-section {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: var(--radius);
+}
+
+.logs-section h4 {
+    margin-bottom: 10px;
+}
+
+.logs-list {
+    list-style: none;
+    padding: 0;
+}
+
+.logs-list li {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.logs-list li:last-child {
+    border-bottom: none;
+}
+
+.log-time {
+    color: var(--text-light);
+    font-size: 12px;
+}
+
+.log-action {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
 .hero {
     text-align: center;
     padding: 60px 20px;
@@ -1077,4 +1132,76 @@ a:hover {
 
 .empty-message p {
     margin-bottom: 20px;
+}
+
+
+.progress-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.progress-section h4 {
+    margin-bottom: 15px;
+    color: var(--text-color);
+}
+
+.progress-timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.progress-timeline::before {
+    content: '';
+    position: absolute;
+    left: 10px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--border-color);
+}
+
+.timeline-item {
+    position: relative;
+    padding-bottom: 20px;
+}
+
+.timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -24px;
+    top: 0;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--border-color);
+    border: 2px solid var(--white);
+}
+
+.timeline-item.active .timeline-marker {
+    background: var(--primary-color);
+}
+
+.timeline-content {
+    padding-left: 10px;
+}
+
+.timeline-title {
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 5px;
+}
+
+.timeline-time {
+    font-size: 12px;
+    color: var(--text-light);
+}
+
+.timeline-info {
+    font-size: 14px;
+    color: var(--text-light);
+    margin-top: 5px;
 }

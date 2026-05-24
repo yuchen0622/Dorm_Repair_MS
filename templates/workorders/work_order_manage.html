@@ -1,0 +1,248 @@
+{% extends 'base.html' %}
+
+{% block title %}工单管理 - 宿舍报修管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>工单管理</h2>
+    <p class="text-muted">查看和管理所有工单</p>
+</div>
+
+<div class="stats-row">
+    <div class="stat-item">
+        <span class="stat-num">{{ total }}</span>
+        <span class="stat-text">总工单</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-num">{{ assigned }}</span>
+        <span class="stat-text">已派单</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-num">{{ accepted }}</span>
+        <span class="stat-text">已接单</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-num">{{ in_progress }}</span>
+        <span class="stat-text">维修中</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-num">{{ completed }}</span>
+        <span class="stat-text">已完成</span>
+    </div>
+</div>
+
+<div class="filter-bar">
+    <form method="get" class="filter-form">
+        <select name="status" class="form-select filter-select">
+            <option value="">全部状态</option>
+            <option value="assigned" {% if current_status == 'assigned' %}selected{% endif %}>已派单</option>
+            <option value="accepted" {% if current_status == 'accepted' %}selected{% endif %}>已接单</option>
+            <option value="in_progress" {% if current_status == 'in_progress' %}selected{% endif %}>维修中</option>
+            <option value="completed" {% if current_status == 'completed' %}selected{% endif %}>已完成</option>
+            <option value="rejected" {% if current_status == 'rejected' %}selected{% endif %}>已拒绝</option>
+        </select>
+        <select name="worker_id" class="form-select filter-select">
+            <option value="">全部维修工</option>
+            {% for w in all_workers %}
+            <option value="{{ w.id }}" {% if current_worker == w.id|stringformat:"s" %}selected{% endif %}>{{ w.username }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-primary">筛选</button>
+        <a href="{% url 'workorders:work_order_manage' %}" class="btn btn-secondary">重置</a>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>工单ID</th>
+                    <th>报修标题</th>
+                    <th>宿舍</th>
+                    <th>维修工</th>
+                    <th>状态</th>
+                    <th>派单时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in page_obj %}
+                <tr>
+                    <td>{{ item.id }}</td>
+                    <td>{{ item.repair_request.title }}</td>
+                    <td>{{ item.repair_request.dorm_building }} {{ item.repair_request.dorm_room }}</td>
+                    <td>{{ item.worker.username|default:"未分配" }}</td>
+                    <td><span class="badge badge-{{ item.status }}">{{ item.get_status_display }}</span></td>
+                    <td>{{ item.assigned_at|date:"Y-m-d H:i" }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-info" onclick="viewDetail('{{ item.id }}')">详情</button>
+                        {% if item.status in 'assigned,accepted' %}
+                        <button class="btn btn-sm btn-warning" onclick="reassign('{{ item.id }}')">重新派单</button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center">暂无工单记录</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if page_obj.has_other_pages %}
+<div class="pagination">
+    {% if page_obj.has_previous %}
+    <a href="?page=1{{ filter_params }}" class="page-btn">首页</a>
+    <a href="?page={{ page_obj.previous_page_number }}{{ filter_params }}" class="page-btn">上一页</a>
+    {% endif %}
+    
+    <span class="page-info">第 {{ page_obj.number }} 页 / 共 {{ page_obj.paginator.num_pages }} 页</span>
+    
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}{{ filter_params }}" class="page-btn">下一页</a>
+    <a href="?page={{ page_obj.paginator.num_pages }}{{ filter_params }}" class="page-btn">末页</a>
+    {% endif %}
+</div>
+{% endif %}
+
+<div id="detailModal" class="modal">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h3>工单详情</h3>
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+    </div>
+</div>
+
+<div id="reassignModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>重新派单</h3>
+            <span class="modal-close" onclick="closeReassignModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">选择维修工</label>
+                <select id="newWorker" class="form-select">
+                    {% for w in all_workers %}
+                    <option value="{{ w.id }}">{{ w.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-primary" onclick="submitReassign()">确认</button>
+                <button type="button" class="btn btn-secondary" onclick="closeReassignModal()">取消</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentWorkOrderId = null;
+
+function viewDetail(id) {
+    fetch(`/workorders/api/${id}/`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const d = data.data;
+                let logsHtml = '';
+                if (d.logs.length > 0) {
+                    logsHtml = '<div class="logs-section"><h4>操作记录</h4><ul class="logs-list">';
+                    d.logs.forEach(log => {
+                        logsHtml += `<li><span class="log-time">${log.created_at}</span> <span class="log-action">${log.action}</span> ${log.description} (${log.operator})</li>`;
+                    });
+                    logsHtml += '</ul></div>';
+                }
+                document.getElementById('modalBody').innerHTML = `
+                    <div class="user-detail">
+                        <p><strong>工单ID：</strong>${d.id}</p>
+                        <p><strong>报修标题：</strong>${d.repair_title}</p>
+                        <p><strong>报修类型：</strong>${d.repair_type}</p>
+                        <p><strong>问题描述：</strong>${d.repair_description}</p>
+                        <p><strong>宿舍：</strong>${d.dorm_building} ${d.dorm_room}</p>
+                        <p><strong>联系电话：</strong>${d.contact_phone}</p>
+                        <p><strong>维修工：</strong>${d.worker_name || '未分配'}</p>
+                        <p><strong>维修工电话：</strong>${d.worker_phone || '-'}</p>
+                        <p><strong>状态：</strong>${d.status_display}</p>
+                        <p><strong>派单管理员：</strong>${d.assigned_by || '-'}</p>
+                        <p><strong>派单时间：</strong>${d.assigned_at}</p>
+                        <p><strong>接单时间：</strong>${d.accepted_at || '-'}</p>
+                        <p><strong>开始时间：</strong>${d.started_at || '-'}</p>
+                        <p><strong>完成时间：</strong>${d.completed_at || '-'}</p>
+                        <p><strong>维修备注：</strong>${d.remark || '-'}</p>
+                        ${logsHtml}
+                    </div>
+                `;
+                document.getElementById('detailModal').style.display = 'block';
+            }
+        });
+}
+
+function reassign(id) {
+    currentWorkOrderId = id;
+    document.getElementById('reassignModal').style.display = 'block';
+}
+
+function submitReassign() {
+    const newWorkerId = document.getElementById('newWorker').value;
+    
+    fetch('/workorders/api/reassign/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            work_order_id: currentWorkOrderId,
+            worker_id: parseInt(newWorkerId)
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert('重新派单成功');
+            location.reload();
+        } else {
+            alert('操作失败：' + data.message);
+        }
+    });
+}
+
+function closeModal() {
+    document.getElementById('detailModal').style.display = 'none';
+}
+
+function closeReassignModal() {
+    document.getElementById('reassignModal').style.display = 'none';
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+window.onclick = function(event) {
+    const detailModal = document.getElementById('detailModal');
+    const reassignModal = document.getElementById('reassignModal');
+    if (event.target == detailModal) closeModal();
+    if (event.target == reassignModal) closeReassignModal();
+}
+</script>
+{% endblock %}

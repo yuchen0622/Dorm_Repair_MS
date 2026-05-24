@@ -124,18 +124,99 @@ function viewDetail(id) {
                     });
                     imagesHtml += '</div>';
                 }
-                document.getElementById('modalBody').innerHTML = `
-                    <div class="user-detail">
-                        <p><strong>标题：</strong>${r.title}</p>
-                        <p><strong>类型：</strong>${r.repair_type_display}</p>
-                        <p><strong>描述：</strong>${r.description}</p>
-                        <p><strong>宿舍：</strong>${r.dorm_building} ${r.dorm_room}</p>
-                        <p><strong>联系电话：</strong>${r.contact_phone}</p>
-                        <p><strong>状态：</strong>${r.status_display}</p>
-                        <p><strong>提交时间：</strong>${r.created_at}</p>
-                        ${imagesHtml}
-                    </div>
-                `;
+                
+                let progressHtml = '';
+                if (r.status !== 'pending') {
+                    fetch(`/repairs/api/${id}/progress/`)
+                        .then(res => res.json())
+                        .then(progressData => {
+                            if (progressData.success) {
+                                const p = progressData.data;
+                                progressHtml = `
+                                    <div class="progress-section">
+                                        <h4>维修进度</h4>
+                                        <div class="progress-timeline">
+                                            <div class="timeline-item ${p.submitted ? 'active' : ''}">
+                                                <div class="timeline-marker"></div>
+                                                <div class="timeline-content">
+                                                    <div class="timeline-title">提交报修</div>
+                                                    <div class="timeline-time">${r.created_at}</div>
+                                                </div>
+                                            </div>
+                                            ${p.assigned ? `
+                                            <div class="timeline-item active">
+                                                <div class="timeline-marker"></div>
+                                                <div class="timeline-content">
+                                                    <div class="timeline-title">已派单</div>
+                                                    <div class="timeline-time">${p.assigned_at}</div>
+                                                    <div class="timeline-info">维修工：${p.worker_name || '-'}</div>
+                                                </div>
+                                            </div>
+                                            ` : ''}
+                                            ${p.accepted ? `
+                                            <div class="timeline-item active">
+                                                <div class="timeline-marker"></div>
+                                                <div class="timeline-content">
+                                                    <div class="timeline-title">已接单</div>
+                                                    <div class="timeline-time">${p.accepted_at}</div>
+                                                </div>
+                                            </div>
+                                            ` : ''}
+                                            ${p.started ? `
+                                            <div class="timeline-item active">
+                                                <div class="timeline-marker"></div>
+                                                <div class="timeline-content">
+                                                    <div class="timeline-title">开始维修</div>
+                                                    <div class="timeline-time">${p.started_at}</div>
+                                                </div>
+                                            </div>
+                                            ` : ''}
+                                            ${p.completed ? `
+                                            <div class="timeline-item active">
+                                                <div class="timeline-marker"></div>
+                                                <div class="timeline-content">
+                                                    <div class="timeline-title">维修完成</div>
+                                                    <div class="timeline-time">${p.completed_at}</div>
+                                                    ${p.remark ? `<div class="timeline-info">备注：${p.remark}</div>` : ''}
+                                                </div>
+                                            </div>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                `;
+                                document.getElementById('modalBody').innerHTML = `
+                                    <div class="user-detail">
+                                        <p><strong>标题：</strong>${r.title}</p>
+                                        <p><strong>类型：</strong>${r.repair_type_display}</p>
+                                        <p><strong>描述：</strong>${r.description}</p>
+                                        <p><strong>宿舍：</strong>${r.dorm_building} ${r.dorm_room}</p>
+                                        <p><strong>联系电话：</strong>${r.contact_phone}</p>
+                                        <p><strong>状态：</strong>${r.status_display}</p>
+                                        <p><strong>提交时间：</strong>${r.created_at}</p>
+                                        ${imagesHtml}
+                                        ${progressHtml}
+                                    </div>
+                                `;
+                            }
+                        });
+                } else {
+                    document.getElementById('modalBody').innerHTML = `
+                        <div class="user-detail">
+                            <p><strong>标题：</strong>${r.title}</p>
+                            <p><strong>类型：</strong>${r.repair_type_display}</p>
+                            <p><strong>描述：</strong>${r.description}</p>
+                            <p><strong>宿舍：</strong>${r.dorm_building} ${r.dorm_room}</p>
+                            <p><strong>联系电话：</strong>${r.contact_phone}</p>
+                            <p><strong>状态：</strong>${r.status_display}</p>
+                            <p><strong>提交时间：</strong>${r.created_at}</p>
+                            ${imagesHtml}
+                            <div class="progress-section">
+                                <h4>维修进度</h4>
+                                <p class="text-muted">等待管理员派单...</p>
+                            </div>
+                        </div>
+                    `;
+                }
                 document.getElementById('detailModal').style.display = 'block';
             }
         });

@@ -22,11 +22,11 @@
                         <a href="{% url 'repairs:my_repairs' %}" class="nav-link">我的报修</a>
                         <a href="{% url 'repairs:repair_create' %}" class="nav-link">提交报修</a>
                     {% elif user.role == 'worker' %}
-                        <a href="#" class="nav-link">工作台</a>
-                        <a href="#" class="nav-link">我的工单</a>
+                        <a href="{% url 'workorders:worker_dashboard' %}" class="nav-link">工作台</a>
+                        <a href="{% url 'workorders:worker_dashboard' %}" class="nav-link">我的工单</a>
                     {% elif user.role == 'admin' %}
                         <a href="{% url 'repairs:repair_manage' %}" class="nav-link">报修管理</a>
-                        <a href="#" class="nav-link">派单管理</a>
+                        <a href="{% url 'workorders:work_order_manage' %}" class="nav-link">工单管理</a>
                         <a href="{% url 'users:user_manage' %}" class="nav-link">用户管理</a>
                     {% endif %}
                     <a href="{% url 'users:profile' %}" class="nav-link">个人中心</a>

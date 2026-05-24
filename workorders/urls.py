@@ -4,6 +4,8 @@ from . import views
 app_name = 'workorders'
 
 urlpatterns = [
+    path('dashboard/', views.worker_dashboard, name='worker_dashboard'),
+    path('manage/', views.work_order_manage, name='work_order_manage'),
     path('assign/<int:repair_id>/', views.assign_page, name='assign_page'),
     path('api/workers/', views.api_worker_list, name='api_worker_list'),
     path('api/assign/', views.api_assign, name='api_assign'),
