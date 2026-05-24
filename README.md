@@ -6,7 +6,7 @@
 
 ## 技术栈声明
 
-**后端：** Django 4.x (Python Web框架)
+**后端：** Django 4.2 (Python Web框架)
 
 **前端：** Django模板引擎 + HTML5 + CSS3 + JavaScript
 
