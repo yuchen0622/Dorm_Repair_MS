@@ -4,18 +4,18 @@
 - **测试日期**: 2026-05-24
 - **测试人员**: 开发者A (YCht)
 - **测试分支**: yc5
-- **测试范围**: 用户模块、报修模块
+- **测试范围**: 用户模块、报修模块、工单模块、评价模块
 
 ## 测试统计
-- **总测试数**: 20
-- **通过数**: 20
+- **总测试数**: 43
+- **通过数**: 43
 - **失败数**: 0
 - **错误数**: 0
-- **测试耗时**: 17.694秒
+- **测试耗时**: 69.731秒
 
 ## 测试用例详情
 
-### 1. 用户模块测试 (users)
+### 1. 用户模块测试 (users) - 10个测试
 
 #### 1.1 用户模型测试 (UserModelTest)
 | 测试用例 | 描述 | 结果 |
@@ -38,7 +38,7 @@
 | test_user_list_api_student | 测试学生访问用户列表API(应拒绝) | ✅ 通过 |
 | test_user_detail_api | 测试用户详情API | ✅ 通过 |
 
-### 2. 报修模块测试 (repairs)
+### 2. 报修模块测试 (repairs) - 10个测试
 
 #### 2.1 报修模型测试 (RepairModelTest)
 | 测试用例 | 描述 | 结果 |
@@ -63,6 +63,57 @@
 | test_student_cannot_access_other_repair | 测试学生不能访问他人报修单 | ✅ 通过 |
 | test_student_can_access_own_repair | 测试学生可以访问自己的报修单 | ✅ 通过 |
 
+### 3. 工单模块测试 (workorders) - 12个测试
+
+#### 3.1 工单模型测试 (WorkOrderModelTest)
+| 测试用例 | 描述 | 结果 |
+|---------|------|------|
+| test_work_order_creation | 测试工单创建功能 | ✅ 通过 |
+| test_work_order_status_methods | 测试工单状态判断方法 | ✅ 通过 |
+| test_work_order_accept | 测试工单接单功能 | ✅ 通过 |
+| test_work_order_start | 测试工单开始维修功能 | ✅ 通过 |
+| test_work_order_complete | 测试工单完成功能 | ✅ 通过 |
+| test_work_order_reject | 测试工单拒绝功能 | ✅ 通过 |
+| test_work_order_str | 测试工单字符串表示 | ✅ 通过 |
+
+#### 3.2 工单API测试 (WorkOrderAPITest)
+| 测试用例 | 描述 | 结果 |
+|---------|------|------|
+| test_assign_work_order_api | 测试派单API | ✅ 通过 |
+| test_accept_work_order_api | 测试接单API | ✅ 通过 |
+| test_worker_work_order_detail_api | 测试维修工工单详情API | ✅ 通过 |
+
+#### 3.3 工单权限测试 (WorkOrderPermissionTest)
+| 测试用例 | 描述 | 结果 |
+|---------|------|------|
+| test_worker_cannot_accept_other_order | 测试维修工不能接他人工单 | ✅ 通过 |
+| test_student_cannot_assign_order | 测试学生不能派单 | ✅ 通过 |
+
+### 4. 评价模块测试 (reviews) - 11个测试
+
+#### 4.1 评价模型测试 (ReviewModelTest)
+| 测试用例 | 描述 | 结果 |
+|---------|------|------|
+| test_review_creation | 测试评价创建功能 | ✅ 通过 |
+| test_review_student_property | 测试评价学生属性 | ✅ 通过 |
+| test_review_worker_property | 测试评价维修工属性 | ✅ 通过 |
+| test_review_str | 测试评价字符串表示 | ✅ 通过 |
+| test_review_rating_validation | 测试评价评分验证 | ✅ 通过 |
+
+#### 4.2 评价API测试 (ReviewAPITest)
+| 测试用例 | 描述 | 结果 |
+|---------|------|------|
+| test_review_create_api | 测试评价创建API | ✅ 通过 |
+| test_review_list_api | 测试评价列表API | ✅ 通过 |
+| test_worker_ranking_api | 测试维修工排行榜API | ✅ 通过 |
+
+#### 4.3 评价权限测试 (ReviewPermissionTest)
+| 测试用例 | 描述 | 结果 |
+|---------|------|------|
+| test_student_cannot_review_other_order | 测试学生不能评价他人工单 | ✅ 通过 |
+| test_student_can_review_own_order | 测试学生可以评价自己的工单 | ✅ 通过 |
+| test_cannot_review_twice | 测试不能重复评价 | ✅ 通过 |
+
 ## 测试覆盖范围
 
 ### 功能覆盖
@@ -72,11 +123,20 @@
 - ✅ 报修单CRUD操作
 - ✅ 报修单状态流转
 - ✅ 报修单权限隔离
+- ✅ 工单创建、派单、接单、开始、完成、拒绝
+- ✅ 工单状态流转验证
+- ✅ 工单权限隔离
+- ✅ 评价创建、查询、统计
+- ✅ 评价权限控制
+- ✅ 维修工排行榜
 
 ### 安全性测试
 - ✅ 权限验证：非管理员无法访问用户列表API
 - ✅ 数据隔离：学生无法访问或修改他人报修单
 - ✅ 认证要求：未登录用户无法访问需要认证的API
+- ✅ 工单权限：维修工只能操作自己的工单
+- ✅ 评价权限：学生只能评价自己的工单
+- ✅ 重复评价防护：同一工单不能重复评价
 
 ## 发现的问题与修复
 
@@ -90,13 +150,30 @@
 - **修复**: 在测试中添加登录操作
 - **状态**: ✅ 已修复
 
+### 问题3: 工单模型方法名称错误
+- **描述**: 测试调用`start()`方法，但实际方法名为`start_work()`
+- **修复**: 更新测试用例使用正确的方法名
+- **状态**: ✅ 已修复
+
+### 问题4: 评价API URL参数错误
+- **描述**: 测试使用URL参数传递工单ID，但实际API从POST数据获取
+- **修复**: 修改测试用例，将工单ID放入POST数据中
+- **状态**: ✅ 已修复
+
+### 问题5: 工单列表API权限错误
+- **描述**: 测试维修工访问工单列表API，但该API仅限管理员
+- **修复**: 修改测试用例，改为测试维修工访问工单详情API
+- **状态**: ✅ 已修复
+
 ## 测试警告
 - ⚠️ UnorderedObjectListWarning: 用户列表分页查询未指定排序，可能导致结果不一致
 
 ## 结论
-本次集成测试覆盖了用户模块和报修模块的核心功能，所有测试用例均通过。系统在用户认证、权限控制、数据隔离等方面表现良好，符合设计预期。
+本次集成测试覆盖了用户模块、报修模块、工单模块和评价模块的核心功能，所有43个测试用例均通过。系统在用户认证、权限控制、数据隔离、业务流程等方面表现良好，符合设计预期。
 
 ## 建议
 1. 为用户列表查询添加默认排序，消除警告
 2. 增加边界条件测试（如空数据、超长输入等）
 3. 增加并发场景测试
+4. 增加前端页面测试
+5. 增加API性能测试
